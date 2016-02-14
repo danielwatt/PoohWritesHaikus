@@ -18,12 +18,12 @@ client = swagger.ApiClient(apiKey, apiUrl)
 logger = logging.getLogger('mycustomlogger')
 wordHistogram = {}
 symbolList = {',','?','.','"','!',';','[',']','*',' -','- ', '(', ')'}
-wordDictionary = {}
 
 class HaikuSubRedditSpider(CrawlSpider):
     name = "haikuSubReddit"
     allowed_domains = ["www.reddit.com"]
     start_urls = ['http://www.reddit.com/r/haiku/'] 
+    wordDictionary = {}
     rules = [
     	Rule(LinkExtractor(
     		allow=['/r/haiku/\?count=\d*&after=\w*']),
@@ -32,32 +32,16 @@ class HaikuSubRedditSpider(CrawlSpider):
     ]
 
     def start_requests(self):
-        with open('wordCount.json') as data_file:    
-            data = json.load(data_file)
-
-        # wordApi = WordApi.WordApi(client)
-        # for word in data:    
-        #     syllables = wordApi.getHyphenation(word,
-        #                              useCanonical=True)
-        #     wordCharacteristic = {'partOfSpeech' : None, 'syllables' : None, 'associations': None, 'sentiment':None}
-        #     if syllables:
-        #         wordCharacteristic['syllables'] = len(syllables)
-        #         wordDictionary[word] = wordCharacteristic
-        #         print '%s : %d' %(word,len(syllables))
-        
-        # jsonFile = open('wordDictionary.json', 'w')
-        # print 'were here'
-        # print >>jsonFile, json.dumps(wordDictionary, sort_keys=True, indent=4, separators=(',',": "))
-        # jsonFile.close()
-
-
-        
+        with open('wordDictionary.json') as data_file:     
+            self.wordDictionary = json.load(data_file)
+            print 'Size of wordDict: %d' %(len(self.wordDictionary))
         return super(HaikuSubRedditSpider, self).start_requests()
 
 
     def parse_start_url(self, response):
         titles = response.xpath('//a[contains(@class, "title")]/text()').extract()
         for title in (titles):
+            isHaiku = True
             title = unidecode(title)
             title = title.lower()
             for symbol in symbolList:
@@ -67,6 +51,7 @@ class HaikuSubRedditSpider(CrawlSpider):
             
             for lineNumber, line in enumerate(mylist): 
                 wordList = line.split(" ")
+                totalSyllables = 0
 
                 for wordNumber, word in enumerate(wordList):
 
@@ -78,11 +63,32 @@ class HaikuSubRedditSpider(CrawlSpider):
                         word = word[:len(word)-2]
 
                     if word:
-                        if word in wordHistogram:
-                            wordHistogram[word] += 1
-                        else:
-                            wordHistogram[word] = 1
+                        self.addToWordHistogram(word)
+                        if word in self.wordDictionary:
+                            totalSyllables += (self.wordDictionary[word])['syllables']
+                            print totalSyllables
 
+
+                if lineNumber is 0 or lineNumber is 2:
+                    if totalSyllables is not 5:
+                        isHaiku = False
+
+                if lineNumber is 1:
+                    if totalSyllables is not 7:
+                        isHaiku = False
+            if isHaiku:
+                print title
+            else:
+                print 'The following is not a haiku /n %s' %(title)
+
+
+
+    def addToWordHistogram(self, word):
+        if word in wordHistogram:
+            wordHistogram[word] += 1
+        else:
+            wordHistogram[word] = 1
+            
     def closed(self,reason):
         jsonFile = open('wordCount.json', 'w')
         print >>jsonFile, json.dumps(wordHistogram, sort_keys=True, indent=4, separators=(',',": "))
