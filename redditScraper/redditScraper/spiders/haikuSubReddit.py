@@ -35,6 +35,7 @@ class HaikuSubRedditSpider(CrawlSpider):
         with open('wordDictionary.json') as data_file:     
             self.wordDictionary = json.load(data_file)
             print 'Size of wordDict: %d' %(len(self.wordDictionary))
+            
         return super(HaikuSubRedditSpider, self).start_requests()
 
 
@@ -79,7 +80,7 @@ class HaikuSubRedditSpider(CrawlSpider):
             if isHaiku:
                 print title
             else:
-                print 'The following is not a haiku /n %s' %(title)
+                print 'The following is not a haiku \n %s' %(title)
 
 
 
